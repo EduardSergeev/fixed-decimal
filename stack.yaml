@@ -1,0 +1,15 @@
+# Resolver to choose a 'specific' stackage snapshot or a compiler version.
+resolver: lts-22.22
+
+# User packages to be built.
+packages:
+  - .
+
+# Override default flag values for local packages and extra-deps
+# flags: {}
+
+# Control whether we use the GHC we find on the path
+system-ghc: true
+
+# Allow a newer minor version of GHC than the snapshot specifies
+compiler-check: newer-minor
