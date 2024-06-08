@@ -74,7 +74,7 @@ instance Num Decimal where
         Decimal $ abs m
 
     signum (Decimal m) =
-        Decimal $ signum m
+        Decimal $ (10 ^ precision) * signum m
 
     fromInteger i =
         Decimal $ (10 ^ precision) * fromInteger i
