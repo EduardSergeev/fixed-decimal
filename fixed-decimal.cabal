@@ -23,7 +23,16 @@ source-repository head
 
 library
   exposed-modules:
-      Fixed.Decimal
+      Data.Fixed.Decimal
+      Data.Fixed.Decimal.Class
+      Data.Fixed.Decimal.Int128
+      Data.Fixed.Decimal.Int160
+      Data.Fixed.Decimal.Int192
+      Data.Fixed.Decimal.Int256
+      Data.Fixed.Decimal.Word128
+      Data.Fixed.Decimal.Word160
+      Data.Fixed.Decimal.Word192
+      Data.Fixed.Decimal.Word256
   other-modules:
       Paths_fixed_decimal
   autogen-modules:
