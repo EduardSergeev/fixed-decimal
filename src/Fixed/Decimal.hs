@@ -8,6 +8,7 @@ module Fixed.Decimal
 ) where
 
 import Data.DoubleWord
+import Data.List (foldl')
 import Data.Ratio (denominator, numerator, (%))
 
 
@@ -27,17 +28,29 @@ decimal m e =
 
 
 instance Show Decimal where
-    show (Decimal 0) = "0"
+    show (Decimal 0) =
+        "0"
     show (Decimal m) =
-        let n = length . show . abs $ m
-            (q, r) = m `quotRem` (10 ^ precision)
-            aq = abs q
-            ar = abs r
-            sign = if m < 0 then "-" else ""
-            dot = if ar > 0 then "." else ""
-        in concat [sign, show aq, dot, replicate (precision - n) '0', if ar > 0 then trim0 . show $ ar else ""]
+        fst . foldl' step ([], precision) . pad (precision + 1) . reverse . show $ m
         where
-            trim0 = reverse . dropWhile (== '0') . reverse
+            step ([], i) '0' | i > 0 =
+                ([], i - 1)
+            step (ds, i) d | i > 0 =
+                (d : ds, i - 1)
+            step ([], 0) d =
+                ([d], -1)
+            step (ds, 0) d =
+                (d : '.' : ds, -1)
+            step (ds, i) d  =
+                (d : ds, i - 1)
+            pad 0 ds =
+                ds
+            pad i [] =
+                '0' : pad (pred i) []
+            pad i "-" =
+                '0' : pad (pred i) "-"
+            pad i (d : ds) =
+                d : pad (pred i) ds
 
 normalise :: Integral a => a -> a
 normalise i =
@@ -76,9 +89,9 @@ instance Fractional Decimal where
     
 instance Bounded Decimal where
     minBound =
-        Decimal . normalise $ (minBound :: MantissaType) -- `div` (10 ^ (precision - 1))
+        Decimal . normalise $ (minBound :: MantissaType)
     maxBound =
-        Decimal . normalise $ (maxBound :: MantissaType) -- `div` (10 ^ (precision - 1))
+        Decimal . normalise $ (maxBound :: MantissaType)
 
 
 instance Real Decimal where
