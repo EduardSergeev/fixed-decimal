@@ -2,8 +2,10 @@ cabal-version: 2.2
 
 name:           fixed-decimal
 version:        0.0.0.1
-description:    Please see the README on GitHub at <https://github.com/githubuser/Decimal#readme>
-homepage:       https://github.com/EduardSergeev/fixed-decimal#README.md
+synopsis:       Fixed precision decimals for Haskell
+description:    Please see the README on GitHub at <https://github.com/EduardSergeev/fixed-decimal#readme>
+category:       Data
+homepage:       https://github.com/EduardSergeev/fixed-decimal#readme
 bug-reports:    https://github.com/EduardSergeev/fixed-decimal/issues
 author:         Eduard Sergeev
 maintainer:     eduard.sergeev@gmail.com
@@ -11,7 +13,7 @@ copyright:      2024 Eduard Sergeev
 license:        BSD-3-Clause
 license-file:   LICENSE
 build-type:     Simple
-extra-source-files:
+extra-doc-files:
     README.md
     CHANGELOG.md
 
@@ -22,25 +24,25 @@ source-repository head
 library
   exposed-modules:
       Fixed.Decimal
-  -- other-modules:
-  --     Paths_Decimal
-  -- autogen-modules:
-  --     Paths_Decimal
+  other-modules:
+      Paths_fixed_decimal
+  autogen-modules:
+      Paths_fixed_decimal
   hs-source-dirs:
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
-    , data-dword
+    , data-dword >= 0.3 && < 0.5
   default-language: Haskell2010
 
 test-suite fixed-decimal-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
-  -- other-modules:
-  --     Paths_Decimal
-  -- autogen-modules:
-  --     Paths_Decimal
+  other-modules:
+      Paths_fixed_decimal
+  autogen-modules:
+      Paths_fixed_decimal
   hs-source-dirs:
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N

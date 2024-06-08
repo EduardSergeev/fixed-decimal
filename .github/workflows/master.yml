@@ -1,0 +1,83 @@
+name: master
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  stack-build:
+    strategy:
+      fail-fast: false
+      matrix:
+        lts:
+          - 18.28 # 8.10.7
+          - 19.33 # 9.0.2
+          - 22.24 # 9.6.5 
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Stack LTS-${{ matrix.lts }} environment
+      run: |
+        echo "resolver: lts-${{ matrix.lts }}" > stack.yaml
+        echo "packages: [.]" >> stack.yaml
+        echo "save-hackage-creds: false" >> stack.yaml
+        stack setup
+    - run: stack build
+    - run: stack test
+
+  cabal-build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - run: cabal update
+    - run: cabal configure --enable-tests
+    - run: cabal build
+    - run: cabal test --test-show-details=always
+    - run: cabal haddock
+    - run: cabal check
+    - run: cabal sdist
+
+  metrics:
+    runs-on: ubuntu-latest
+    env:
+      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+      LCOV_PATH: ./lcov.info
+    steps:
+    - uses: actions/checkout@v4
+    - name: Add $HOME/.local/bin to PATH
+      run: echo "::add-path::$HOME/.local/bin"
+    - name: Run tests with coverage
+      run: stack test --coverage
+    - name: Install hpc-lcov
+      run: stack install hpc-lcov
+    - name: Convert coverage results to LCOV format
+      run: hpc-lcov -o ${{ env.LCOV_PATH }}
+    - name: Upload coverage to Coverall 
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        path-to-lcov: ${{ env.LCOV_PATH }}
+    - name: Run benchmarks
+      run: stack bench
+
+  hackage-upload:
+    if: github.event_name == 'push' && startsWith(github.event.base_ref, 'refs/heads/master') && startsWith(github.event.ref, 'refs/tags')
+    needs:
+      - stack-build
+      - cabal-build
+      - metrics
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Upload version to Hackage
+      env:
+        HACKAGE_USERNAME: ${{ secrets.HACKAGE_USERNAME }}
+        HACKAGE_PASSWORD: ${{ secrets.HACKAGE_PASSWORD }}
+      run: stack upload .
