@@ -11,6 +11,13 @@ import           Test.QuickCheck
 import           Test.QuickCheck.Instances.Scientific ()
 
 
+instance Arbitrary DD.Decimal where
+    arbitrary = flip suchThat (\d -> let sd = show d in '.' `notElem` sd || last sd /= '0') $ do
+        m <- chooseInteger (-10 ^ (15 :: Int), 10 ^ (15 :: Int))
+        e <- choose (0, fromIntegral precision)
+        pure (DD.Decimal e m)
+
+
 spec :: Spec
 spec = do
     describe "Decimal" $ do
@@ -24,9 +31,13 @@ spec = do
                     property prop_decimalPlusEq
                 it "Precision test" $ do
                     property prop_precision
-                it "Show" $ do
-                    property prop_decimalShowEq
-        describe "Show" $ do
+                it "show" $ do
+                    property $ \e -> show @DD.Decimal e === (show . fromRational @Decimal . toRational) e 
+                it "abs" $ do
+                    property $ \e -> (show . abs @DD.Decimal) e === (show . abs . fromRational @Decimal . toRational) e 
+                it "signum" $ do
+                    property $ \e -> (show . signum @DD.Decimal) e === (show . signum . fromRational @Decimal . toRational) e 
+        describe "Specific Show cases" $ do
             it "0" $ do
                 show (0 :: Decimal) `shouldBe` "0"
             it "42" $ do
@@ -62,22 +73,6 @@ prop_precision (Positive n) (Positive di) =
     in viaSum d /= (fromIntegral n) * d ==> viaSum de === (fromIntegral n) * de 
     where
         viaSum d = sum $ replicate n d
-
-
-prop_decimalShowEq :: DD.Decimal -> Property
-prop_decimalShowEq e =
-    '.' `notElem` se || last se /= '0'  ==> show e === show d
-    where
-        se = show e
-        r = toRational e
-        d = fromRational @Decimal r
-
-
-instance Arbitrary DD.Decimal where
-    arbitrary = do
-        m <- chooseInteger (-10 ^ (15 :: Int), 10 ^ (15 :: Int))
-        e <- choose (0, fromIntegral precision)
-        pure $ DD.Decimal e m
 
 
 inRange :: Scientific -> Bool
