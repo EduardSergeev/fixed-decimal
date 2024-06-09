@@ -5,8 +5,8 @@
 
 module Data.Fixed.Decimal
 (
-    FixedDecimal(..),
-    DecimalP(..)
+    module Data.Fixed.Decimal.Class,
+    Decimal(..)
 ) where
 
 import Data.Fixed.Decimal.Class
@@ -16,20 +16,20 @@ import Data.Ratio (denominator, numerator, (%))
 import GHC.TypeLits (KnownNat(..), Nat, natVal)
 
 
-newtype DecimalP (p :: Type) (s :: Nat) = Decimal {
+newtype Decimal (p :: Type) (s :: Nat) = Decimal {
     mantissa :: p
 } deriving (Eq, Ord)
 
-instance (Integral m, KnownNat s) => FixedDecimal (DecimalP m s) where
-    type Scale (DecimalP m s) = s
-    type Precision (DecimalP m s) = m
+instance (Integral m, KnownNat s) => FixedDecimal (Decimal m s) where
+    type Scale (Decimal m s) = s
+    type Precision (Decimal m s) = m
     scale _ =
         fromInteger $ natVal @s undefined
     decimal m e =
-        let ma = normalise $ fromIntegral m * (10 ^ (scale @(DecimalP m s) undefined + e + 1))
+        let ma = normalise $ fromIntegral m * (10 ^ (scale @(Decimal m s) undefined + e + 1))
         in Decimal ma
 
-instance (Show m, Integral m, KnownNat s) => Show (DecimalP m s) where
+instance (Show m, Integral m, KnownNat s) => Show (Decimal m s) where
     show (Decimal 0) =
         "0"
     show dm@(Decimal m) =
@@ -62,7 +62,7 @@ normalise i =
         (q, _) -> pred q
 
 
-instance (Integral m, KnownNat s) => Num (DecimalP m s) where
+instance (Integral m, KnownNat s) => Num (Decimal m s) where
     (Decimal l) + (Decimal r) =
         Decimal $ l + r
 
@@ -79,23 +79,23 @@ instance (Integral m, KnownNat s) => Num (DecimalP m s) where
         Decimal $ (10 ^ scale d) * signum m
 
     fromInteger i =
-        Decimal $ (10 ^ scale (undefined :: DecimalP m s)) * fromInteger i
+        Decimal $ (10 ^ scale (undefined :: Decimal m s)) * fromInteger i
 
 
-instance (Integral m, KnownNat s) => Fractional (DecimalP m s) where
+instance (Show m, Integral m, KnownNat s) => Fractional (Decimal m s) where
   fromRational r =
     fromInteger (numerator r) / fromInteger (denominator r)
 
   (Decimal l) / d@(Decimal r) =
     Decimal . normalise $ (10 ^ (scale d + 1)) * l `div` r
     
-instance (Bounded m, Integral m) => Bounded (DecimalP m s) where
+instance (Bounded m) => Bounded (Decimal m s) where
     minBound =
-        Decimal . normalise $ (minBound :: m)
+        Decimal $ minBound @m
     maxBound =
-        Decimal . normalise $ (maxBound :: m)
+        Decimal $ maxBound @m
 
 
-instance (Integral m, KnownNat s) => Real (DecimalP m s) where
+instance (Integral m, KnownNat s) => Real (Decimal m s) where
     toRational d@(Decimal m) =
-        fromIntegral m % 10 ^ scale d
+        fromIntegral m % (10 ^ scale d)

@@ -4,29 +4,18 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 import qualified Data.Decimal as DD
-import           Data.Fixed.Decimal
-import qualified Data.Fixed.Decimal.Int256 as D
+import           Data.DoubleWord (Int256)
+import           Data.Fixed.Decimal hiding (Decimal)
+import qualified Data.Fixed.Decimal as D
 import           Data.Scientific (Scientific(..), scientific)
 import           Test.Hspec (Spec, describe, hspec, it, shouldBe)
 import           Test.Hspec.QuickCheck (modifyMaxSuccess)
-import           Test.QuickCheck hiding (scale) --(Arbitrary(..), Property, Positive(..))
+import           Test.QuickCheck hiding (scale)
 import           Test.QuickCheck.Instances.Scientific ()
 
 
-type Decimal = D.Decimal 10
-
-instance Arbitrary Decimal where
-    arbitrary =
-        Decimal <$> chooseBoundedIntegral (-lim, lim)
-        where
-            lim = (`div` 10) . floor @Double . sqrt . fromIntegral $ maxBound @(Precision Decimal)
-
-instance Arbitrary DD.Decimal where
-    arbitrary = flip suchThat (\d -> let sd = show d in '.' `notElem` sd || last sd /= '0') $ do
-        m <- chooseInteger (-10 ^ (15 :: Int), 10 ^ (15 :: Int))
-        e <- choose (0, fromIntegral . scale $ (undefined :: Decimal))
-        pure $ DD.Decimal e m
-
+type FractionalPartPrecision = 15
+type Decimal = D.Decimal Int256 FractionalPartPrecision
 
 spec :: Spec
 spec = do
@@ -40,9 +29,9 @@ spec = do
                         property prop_rationalEq
                     it "Precision test" $ do
                         property prop_precision
+                describe "Behaviour equivalence tests" $ do
                     it "/ * test" $ do
                         property prop_divisionMultiplication
-                describe "Behaviour equivalence tests" $ do
                     it "DD.Decimal equivalence in terms of addition" $ do
                         property prop_decimalPlusEq
                     it "show" $ do
@@ -108,6 +97,17 @@ fromScientific :: Scientific -> Decimal
 fromScientific s =
     decimal (coefficient s) (base10Exponent s)
 
+instance Arbitrary Decimal where
+    arbitrary =
+        D.Decimal . (* (10 ^ ((s `div` 2 + 1)))) <$> chooseBoundedIntegral (-lim, lim)
+        where
+            s = scale @Decimal undefined
+            p = floor @Double @Int . logBase 10 . fromIntegral $ maxBound @(Precision Decimal)
+            lim = maxBound @(Precision Decimal) `mod` (10 ^ (p `div` 3))
+
+instance Arbitrary DD.Decimal where
+    arbitrary = flip suchThat (\d -> let sd = show d in '.' `notElem` sd || last sd /= '0') $ do
+        fromRational . toRational <$> arbitrary @Decimal
 
 main :: IO ()
 main =
