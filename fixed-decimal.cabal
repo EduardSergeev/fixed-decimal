@@ -1,9 +1,22 @@
 cabal-version: 2.2
 
 name:           fixed-decimal
-version:        0.0.0.1
+version:        0.0.1
 synopsis:       Fixed precision decimals for Haskell
-description:    Please see the README on GitHub at <https://github.com/EduardSergeev/fixed-decimal#readme>
+description:
+  Fixed precision decimal numbers type
+  .
+  Example of defining 256-bit signed decimal with 10-digit fractional part:
+  .
+  >{-# LANGUAGE DataKinds #-}
+  >
+  >import Data.DoubleWord (Int256)
+  >import Data.Fixed.Decimal as (Decimal)
+  >
+  >type DecimalI256 = Decimal Int256 10
+  .
+  
+
 category:       Data
 homepage:       https://github.com/EduardSergeev/fixed-decimal#readme
 bug-reports:    https://github.com/EduardSergeev/fixed-decimal/issues
@@ -21,38 +34,63 @@ source-repository head
   type: git
   location: https://github.com/EduardSergeev/fixed-decimal
 
-library
-  exposed-modules:
-      Data.Fixed.Decimal
-      Data.Fixed.Decimal.Class
-  other-modules:
-      Paths_fixed_decimal
-  autogen-modules:
-      Paths_fixed_decimal
-  hs-source-dirs:
-      src
-  ghc-options: -Wall -fno-warn-orphans -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+common project-config
+  ghc-options:
+    -O2 -Wall
+  default-extensions:
+    DataKinds
+    FlexibleInstances
+    TypeApplications
   build-depends:
-      base >=4.7 && <5
+    base >=4.7 && <5
   default-language: Haskell2010
 
-test-suite fixed-decimal-test
-  type: exitcode-stdio-1.0
-  main-is: Spec.hs
+library
+  import: project-config
+  exposed-modules:
+    Data.Fixed.Decimal
+    Data.Fixed.Decimal.Class
   other-modules:
-      Paths_fixed_decimal
+    Paths_fixed_decimal
   autogen-modules:
-      Paths_fixed_decimal
+    Paths_fixed_decimal
   hs-source-dirs:
-      test
-  ghc-options: -Wall -fno-warn-orphans -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+    src
+
+test-suite fixed-decimal-test
+  import: project-config
+  type: exitcode-stdio-1.0
+  main-is: Test.hs
+  other-modules:
+    Paths_fixed_decimal
+  autogen-modules:
+    Paths_fixed_decimal
+  hs-source-dirs:
+    test
+  ghc-options: -fno-warn-orphans -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
-    , data-dword >= 0.3 && < 0.5
-    , Decimal
-    , fixed-decimal
-    , hspec
-    , QuickCheck
-    , quickcheck-instances
-    , scientific
-  default-language: Haskell2010
+    data-dword,
+    Decimal,
+    fixed-decimal,
+    QuickCheck,
+    quickcheck-instances,
+    scientific,
+    tasty,
+    tasty-hunit,
+    tasty-quickcheck
+
+benchmark all
+  import: project-config
+  type: exitcode-stdio-1.0
+  ghc-options:
+    -fno-warn-orphans
+  hs-source-dirs:
+    benchmark
+  main-is:
+    Bench.hs
+  build-depends:
+    data-dword,
+    Decimal,
+    deepseq,
+    fixed-decimal,
+    tasty-bench

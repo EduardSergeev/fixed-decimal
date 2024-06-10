@@ -10,16 +10,23 @@ on:
     branches:
       - master
 
+env:
+  DOCS_BRANCH: docs
+  DOCS_DIR: ${{ github.workspace }}/docs
+
 jobs:
   stack-build:
     strategy:
       fail-fast: false
       matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
         lts:
           - 18.28 # 8.10.7
           - 19.33 # 9.0.2
           - 22.24 # 9.6.5 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
 
@@ -34,15 +41,38 @@ jobs:
 
   cabal-build:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract-version.outputs.VERSION }}
     steps:
     - uses: actions/checkout@v4
+
+    - name: Extract package version
+      id: extract-version
+      run: echo "VERSION=$(grep '^version' fixed-decimal.cabal | grep -Po '[0-9.]*')" >> $GITHUB_OUTPUT
+
     - run: cabal update
+
     - run: cabal configure --enable-tests
+
     - run: cabal build
+
     - run: cabal test --test-show-details=always
-    - run: cabal haddock
+
     - run: cabal check
+
     - run: cabal sdist
+
+    - name: Run cabal haddock
+      run: |
+        cabal haddock
+        echo "HADDOC_DIR=$(find . -type d -name 'fixed-decimal')" >> $GITHUB_ENV
+
+    - name: Upload Haddock documentation
+      uses: actions/upload-artifact@v3
+      with:
+        name: haddock
+        path: |
+          ${{ env.HADDOC_DIR }}/**/*
 
   metrics:
     runs-on: ubuntu-latest
@@ -51,21 +81,96 @@ jobs:
       LCOV_PATH: ./lcov.info
     steps:
     - uses: actions/checkout@v4
+
     - name: Add $HOME/.local/bin to PATH
       run: echo "::add-path::$HOME/.local/bin"
+
     - name: Run tests with coverage
       run: stack test --coverage
+
     - name: Install hpc-lcov
       run: stack install hpc-lcov
+
     - name: Convert coverage results to LCOV format
       run: hpc-lcov -o ${{ env.LCOV_PATH }}
+
     - name: Upload coverage to Coverall 
       uses: coverallsapp/github-action@master
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         path-to-lcov: ${{ env.LCOV_PATH }}
+
+  benchmarks:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
+    env:
+      BENCH_DIR: .bench
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Haskell Stack
+      if: runner.os == 'macOS'
+      run: |
+        brew install llvm@12
+        echo "/opt/homebrew/opt/llvm@12/bin" >> $GITHUB_PATH
+        brew install haskell-stack
+
     - name: Run benchmarks
-      run: stack bench
+      run: |
+        mkdir ${{ env.BENCH_DIR }}
+        stack bench --ba '--csv ${{ env.BENCH_DIR }}/results.csv --svg ${{ env.BENCH_DIR }}/results.svg +RTS -T'
+
+    - name: Upload ${{ matrix.os }} benchmarks results
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.os }}
+        path: |
+          ${{ env.BENCH_DIR }}/**/*
+
+  documentation:
+    needs:
+      - cabal-build
+      - benchmarks
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.cabal-build.outputs.version }}    
+    steps:    
+    - name: Check out ${{ env.DOCS_BRANCH }} branch
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ env.DOCS_BRANCH }}
+
+    - name: Clear up ${{ env.DOCS_DIR }} directory
+      run: |
+        git rm -r ${{ env.DOCS_DIR }}
+        mkdir ${{ env.DOCS_DIR }}
+
+    - name: Download benchmarks results
+      uses: actions/download-artifact@v3
+      with:
+        path: ${{ env.DOCS_DIR }}
+
+    - name: Update documentation (version ${{ env.VERSION }})
+      run: |
+        npm i -g badge-maker
+        badge version "${{ env.VERSION }}" :green > "${{ env.DOCS_DIR }}/version.svg"
+        badge bench-linux "${{ env.VERSION }}" "#E95420" > "${{ env.DOCS_DIR }}/bench-linux.svg"
+        badge bench-windows "${{ env.VERSION }}" "#01BCF3" > "${{ env.DOCS_DIR }}/bench-windows.svg"
+        git add ${{ env.DOCS_DIR }}/*
+        git -c "user.name=Auto Publisher" -c "user.email=eduard.sergeev@gmail.com" commit --allow-empty -m "Build ${{ env.VERSION }}"
+
+    - name: Push documentation to '${{ env.DOCS_BRANCH }}' branch
+      if: github.event_name == 'push' && startsWith(github.event.base_ref, 'refs/heads/master') && startsWith(github.event.ref, 'refs/tags')
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: ${{ env.DOCS_BRANCH }}
 
   hackage-upload:
     if: github.event_name == 'push' && startsWith(github.event.base_ref, 'refs/heads/master') && startsWith(github.event.ref, 'refs/tags')
@@ -73,6 +178,7 @@ jobs:
       - stack-build
       - cabal-build
       - metrics
+      - benchmarks
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
