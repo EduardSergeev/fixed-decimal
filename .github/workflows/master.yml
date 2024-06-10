@@ -11,8 +11,8 @@ on:
       - master
 
 env:
-  DOCS_DIR: ${{ github.workspace }}/docs
   DOCS_BRANCH: docs
+  DOCS_DIR: ${{ github.workspace }}/docs
 
 jobs:
   stack-build:
@@ -40,13 +40,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+
     - run: cabal update
+
     - run: cabal configure --enable-tests
+
     - run: cabal build
+
     - run: cabal test --test-show-details=always
-    - run: cabal haddock
+
     - run: cabal check
+
     - run: cabal sdist
+
+    - name: Run cabal haddock
+      run: |
+        cabal haddock
+        echo "HADDOC_DIR=$(find . -type d -name 'fixed-decimal')" >> $GITHUB_ENV
+
+    - name: Upload Haddock documentation
+      uses: actions/upload-artifact@v3
+      with:
+        name: haddock
+        path: |
+          ${{ env.HADDOC_DIR }}/**/*
 
   metrics:
     runs-on: ubuntu-latest
@@ -101,6 +118,7 @@ jobs:
 
   documentation:
     needs:
+      - cabal-build
       - benchmarks
     runs-on: ubuntu-latest
     steps:    
