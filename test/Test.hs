@@ -1,6 +1,3 @@
-{-# LANGUAGE DataKinds            #-}
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
 import qualified Data.Decimal as DD
