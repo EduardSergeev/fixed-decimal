@@ -38,8 +38,14 @@ jobs:
 
   cabal-build:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract-version.outputs.VERSION }}
     steps:
     - uses: actions/checkout@v4
+
+    - name: Extract package version
+      id: extract-version
+      run: echo "VERSION=$(grep '^version' fixed-decimal.cabal | grep -Po '[0-9.]*')" >> $GITHUB_OUTPUT
 
     - run: cabal update
 
@@ -121,27 +127,25 @@ jobs:
       - cabal-build
       - benchmarks
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.cabal-build.outputs.version }}    
     steps:    
     - name: Check out ${{ env.DOCS_BRANCH }} branch
       uses: actions/checkout@v4
       with:
         ref: ${{ env.DOCS_BRANCH }}
 
-    - name: Set version
-      run: |
-        echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
-
     - name: Clear up ${{ env.DOCS_DIR }} directory
       run: |
         git rm -r ${{ env.DOCS_DIR }}
         mkdir ${{ env.DOCS_DIR }}
 
-    - name: Download benchmark results
+    - name: Download benchmarks results
       uses: actions/download-artifact@v3
       with:
         path: ${{ env.DOCS_DIR }}
 
-    - name: Update documentation
+    - name: Update documentation (version ${{ env.VERSION }})
       run: |
         npm i -g badge-maker
         badge version "${{ env.VERSION }}" :green > "${{ env.DOCS_DIR }}/version.svg"
