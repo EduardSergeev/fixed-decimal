@@ -19,11 +19,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
         lts:
           - 18.28 # 8.10.7
           - 19.33 # 9.0.2
           - 22.24 # 9.6.5 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
 
@@ -104,11 +107,19 @@ jobs:
         os:
           - ubuntu-latest
           - windows-latest
+          - macos-latest
     runs-on: ${{ matrix.os }}
     env:
       BENCH_DIR: .bench
     steps:
     - uses: actions/checkout@v4
+
+    - name: Install Haskell Stack
+      if: runner.os == 'macOS'
+      run: |
+        brew install llvm@12
+        echo "/opt/homebrew/opt/llvm@12/bin" >> $GITHUB_PATH
+        brew install haskell-stack
 
     - name: Run benchmarks
       run: |
