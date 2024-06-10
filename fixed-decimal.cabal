@@ -1,7 +1,7 @@
 cabal-version: 2.2
 
 name:           fixed-decimal
-version:        0.0.0.1
+version:        0.0.1
 synopsis:       Fixed precision decimals for Haskell
 description:
   Fixed precision decimal numbers type
