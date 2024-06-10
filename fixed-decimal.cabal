@@ -23,7 +23,8 @@ source-repository head
 
 library
   exposed-modules:
-      Fixed.Decimal
+      Data.Fixed.Decimal
+      Data.Fixed.Decimal.Class
   other-modules:
       Paths_fixed_decimal
   autogen-modules:
@@ -33,7 +34,6 @@ library
   ghc-options: -Wall -fno-warn-orphans -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
-    , data-dword >= 0.3 && < 0.5
   default-language: Haskell2010
 
 test-suite fixed-decimal-test
@@ -48,6 +48,7 @@ test-suite fixed-decimal-test
   ghc-options: -Wall -fno-warn-orphans -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , data-dword >= 0.3 && < 0.5
     , Decimal
     , fixed-decimal
     , hspec
