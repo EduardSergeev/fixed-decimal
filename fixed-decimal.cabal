@@ -3,7 +3,20 @@ cabal-version: 2.2
 name:           fixed-decimal
 version:        0.0.0.1
 synopsis:       Fixed precision decimals for Haskell
-description:    Please see the README on GitHub at <https://github.com/EduardSergeev/fixed-decimal#readme>
+description:
+  Fixed precision decimal numbers type
+  .
+  Example of defining 256-bit signed decimal with 10-digit fractional part:
+  .
+  >{-# LANGUAGE DataKinds #-}
+  >
+  >import Data.DoubleWord (Int256)
+  >import Data.Fixed.Decimal as (Decimal)
+  >
+  >type DecimalI256 = Decimal Int256 10
+  .
+  
+
 category:       Data
 homepage:       https://github.com/EduardSergeev/fixed-decimal#readme
 bug-reports:    https://github.com/EduardSergeev/fixed-decimal/issues

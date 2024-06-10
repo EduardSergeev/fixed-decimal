@@ -1,6 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies        #-}
 
+-- | Decimal types of fixed precision and scale
+--   which can use any 'Integral' type to store mantissa
 module Data.Fixed.Decimal
 (
     module Data.Fixed.Decimal.Class,
@@ -13,10 +15,15 @@ import Data.List (foldl')
 import Data.Ratio (denominator, numerator, (%))
 import GHC.TypeLits (KnownNat(..), Nat, natVal)
 
-
+-- | Decimal type of fixed precision and scale which uses:
+--
+--   * @Integral p => p@ type to store mantissa
+--   * Type-level number @s :: Nat@ to define scale (fractional part length)
+--
 newtype Decimal (p :: Type) (s :: Nat) = Decimal {
     mantissa :: p
 } deriving (Eq, Ord)
+
 
 instance (Integral m, KnownNat s) => FixedDecimal (Decimal m s) where
     type Scale (Decimal m s) = s
