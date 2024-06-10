@@ -8,47 +8,55 @@ import           Data.DoubleWord (Int256)
 import           Data.Fixed.Decimal hiding (Decimal)
 import qualified Data.Fixed.Decimal as D
 import           Data.Scientific (Scientific(..), scientific)
-import           Test.Hspec (Spec, describe, hspec, it, shouldBe)
-import           Test.Hspec.QuickCheck (modifyMaxSuccess)
-import           Test.QuickCheck hiding (scale)
 import           Test.QuickCheck.Instances.Scientific ()
+import           Test.Tasty (TestTree, defaultMain, testGroup)
+import           Test.Tasty.HUnit (testCase, (@?=))
+import           Test.Tasty.QuickCheck hiding (scale)
 
 
 type FractionalPartPrecision = 15
 type Decimal = D.Decimal Int256 FractionalPartPrecision
 
-spec :: Spec
-spec = do
-    describe "Decimal" $ do
-        describe "QuickCheck tests" $ do
-            modifyMaxSuccess (const 1000) $ do
-                describe "Roundtrip tests" $ do
-                    it "Scientific roundtrip" $ do
-                        property prop_sientificEq
-                    it "Rational roundtrip" $ do
-                        property prop_rationalEq
-                    it "Precision test" $ do
-                        property prop_precision
-                describe "Behaviour equivalence tests" $ do
-                    it "/ * test" $ do
-                        property prop_divisionMultiplication
-                    it "DD.Decimal equivalence in terms of addition" $ do
-                        property prop_decimalPlusEq
-                    it "show" $ do
-                        property $ \e -> show @DD.Decimal e === (show . fromRational @Decimal . toRational) e 
-                    it "abs" $ do
-                        property $ \e -> (show . abs @DD.Decimal) e === (show . abs . fromRational @Decimal . toRational) e 
-                    it "signum" $ do
-                        property $ \e -> (show . signum @DD.Decimal) e === (show . signum . fromRational @Decimal . toRational) e 
-        describe "Specific Show cases" $ do
-            it "0" $ do
-                show (0 :: Decimal) `shouldBe` "0"
-            it "42" $ do
-                show (42 :: Decimal) `shouldBe` "42"
-            it "42.1" $ do
-                show (42.1 :: Decimal) `shouldBe` "42.1"
-            it "-42.0000001" $ do
-                show (-42.0000001 :: Decimal) `shouldBe` "-42.0000001"
+tests :: TestTree
+tests =
+  testGroup "Decimal tests" [
+    testGroup "QuickCheck tests" [
+      testGroup "Roundtrip tests" [
+        testProperty "Scientific roundtrip"
+          prop_sientificEq,
+        testProperty "Rational roundtrip"
+          prop_rationalEq,
+        testProperty "Precision test"
+          prop_precision  
+      ],
+      testGroup "Behaviour equivalence tests" [
+        testProperty "/ * test"
+          prop_divisionMultiplication,
+        testProperty "DD.Decimal equivalence in terms of addition"
+          prop_decimalPlusEq,
+        testProperty "show" $
+          \e -> show @DD.Decimal e === (show . fromRational @Decimal . toRational) e,
+        testProperty "abs" $
+          \e -> (show . abs @DD.Decimal) e === (show . abs . fromRational @Decimal . toRational) e,
+        testProperty "signum" $
+          \e -> (show . signum @DD.Decimal) e === (show . signum . fromRational @Decimal . toRational) e
+      ]
+    ],
+    testGroup "Specific Show cases" [
+      testCase "0" $
+          show (0 :: Decimal) @?= "0",
+      testCase "42" $
+          show (42 :: Decimal) @?= "42",
+      testCase "42.1" $
+          show (42.1 :: Decimal) @?= "42.1",
+      testCase "-42.0000001" $
+          show (-42.0000001 :: Decimal) @?= "-42.0000001",
+      testCase "0.00000042" $
+          show (0.00000042 :: Decimal) @?= "0.00000042",
+      testCase "-0.00000042" $
+          show (-0.00000042 :: Decimal) @?= "-0.00000042"
+    ]
+  ]
 
 prop_sientificEq :: Scientific -> Property
 prop_sientificEq s =
@@ -97,6 +105,7 @@ fromScientific :: Scientific -> Decimal
 fromScientific s =
     decimal (coefficient s) (base10Exponent s)
 
+
 instance Arbitrary Decimal where
     arbitrary =
         D.Decimal . (* (10 ^ ((s `div` 2 + 1)))) <$> chooseBoundedIntegral (-lim, lim)
@@ -109,6 +118,7 @@ instance Arbitrary DD.Decimal where
     arbitrary = flip suchThat (\d -> let sd = show d in '.' `notElem` sd || last sd /= '0') $ do
         fromRational . toRational <$> arbitrary @Decimal
 
+
 main :: IO ()
 main =
-    hspec spec      
+  defaultMain tests
