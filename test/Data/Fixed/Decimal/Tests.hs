@@ -9,6 +9,7 @@ module Data.Fixed.Decimal.Tests
     testFor
 ) where
 
+import           Control.Arrow ((***))
 import qualified Data.Decimal as DD
 import           Data.Fixed.Decimal
 import           Data.Scientific (Scientific(..), scientific)
@@ -31,21 +32,31 @@ testFor dmin dmax =
                 testProperty "Precision test"
                     prop_precision  
             ],
-    testGroup "Behaviour equivalence tests" [
-            testProperty "/ * test"
-                prop_divisionMultiplication,
-            testProperty "DD.Decimal equivalence in terms of addition"
-                prop_decimalPlusEq,
-            testProperty "show" $ do
-                d <- gen
-                pure $ show (fromDecimal @DD.Decimal d) === show d,
-            testProperty "abs" $ do
-                d <- gen
-                pure $ show (fromDecimal @DD.Decimal d) === show (abs d),
-            testProperty "signum" $ do
-                d <- gen
-                pure $ (show . signum @DD.Decimal . fromDecimal) d === (show . signum) d
-      ]
+        testGroup "Behaviour equivalence tests" [
+                testProperty "/ * test"
+                    prop_divisionMultiplication,
+                testProperty "DD.Decimal equivalence in terms of addition"
+                    prop_decimalPlusEq,
+                testProperty "show" $ do
+                    d <- gen
+                    pure $ show (fromDecimal @DD.Decimal d) === show d,
+                testProperty "abs" $ do
+                    d <- gen
+                    pure $ show (fromDecimal @DD.Decimal d) === show (abs d),
+                testProperty "signum" $ do
+                    d <- gen
+                    pure $ (show . signum @DD.Decimal . fromDecimal) d === (show . signum) d
+        ],
+        testGroup "Enum tests" [
+                testProperty "fromEnum"
+                    prop_fromEnum,
+                testProperty "toEnum"
+                    prop_toEnum,
+                testProperty "enumFromTo"
+                    prop_enumFromTo,
+                testProperty "enumFromThenTo"
+                    prop_enumFromThenTo
+        ]
     ],
     testGroup "Specific Show cases" [
         testCase "0" $
@@ -101,6 +112,33 @@ testFor dmin dmax =
             in viaSum d /= (fromIntegral n) * d ==> viaSum de === (fromIntegral n) * de 
             where
                 viaSum d = sum $ replicate n d
+
+        prop_fromEnum = do
+            fd <- gen
+            let i = read . takeWhile (/= '.') . show $ fd
+            pure $ i === fromEnum fd
+
+        prop_toEnum i =
+            let d = toEnum @Double i
+                fd = toEnum @(Decimal m s) i
+            in d === (read . show) fd
+
+        prop_enumFromTo = do
+            d1 <- gen
+            d2 <- gen
+            let dds = [fromDecimal @DD.Decimal d1 .. fromDecimal @DD.Decimal d2]
+                fds = [d1 .. d2]
+                (ds, fs) = unzip . filter (\(sd, _) -> last sd /= '0') . fmap (show *** show) . take 10 $ zip dds fds
+            pure $ ds === fs
+
+        prop_enumFromThenTo = do
+            d1 <- gen
+            d2 <- gen
+            d3 <- gen
+            let dds = [fromDecimal @DD.Decimal d1, fromDecimal @DD.Decimal d2 .. fromDecimal @DD.Decimal d3]
+                fds = [d1, d2 .. d3]
+                (ds, fs) = unzip . filter (\(sd, _) -> last sd /= '0') . fmap (show *** show) . take 10 $ zip dds fds
+            pure $ ds === fs
 
         toScientific :: Decimal m s -> Scientific
         toScientific d =
