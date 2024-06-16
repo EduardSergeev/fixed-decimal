@@ -1,7 +1,7 @@
 cabal-version: 2.2
 
 name:           fixed-decimal
-version:        0.0.1
+version:        0.0.2
 synopsis:       Fixed precision decimals for Haskell
 description:
   Fixed precision decimal numbers type
@@ -11,11 +11,19 @@ description:
   >{-# LANGUAGE DataKinds #-}
   >
   >import Data.DoubleWord (Int256)
-  >import Data.Fixed.Decimal as (Decimal)
+  >import Data.Fixed.Decimal (Decimal)
   >
   >type DecimalI256 = Decimal Int256 10
   .
-  
+  >>> minBound :: Decimal Int 5
+  -92233720368547.75808
+  .
+  >>> maxBound :: Decimal Int256 25
+  5789604461865809771178549250434395392663499233282028.2019728792003956564819967
+  .
+  >>> 1 / 3 :: Decimal Integer 50
+  0.33333333333333333333333333333333333333333333333333
+  .
 
 category:       Data
 homepage:       https://github.com/EduardSergeev/fixed-decimal#readme

@@ -1,8 +1,8 @@
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE TypeOperators              #-}
-{-# LANGUAGE UndecidableInstances       #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE TypeOperators        #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- | Decimal types of fixed precision and scale
 --   which can use any 'Integral' type to store mantissa
@@ -15,15 +15,15 @@ module Data.Fixed.Decimal
 import Data.Fixed.Decimal.Class
 import Data.Kind (Type)
 import Data.Ratio (denominator, numerator, (%))
-import GHC.TypeLits -- (KnownNat, Nat, natVal, (^))
+import GHC.TypeLits (KnownNat, Nat, natVal, type (^))
 
 -- | Decimal type of fixed precision and scale which uses:
 --
---   * 'p': 'Integral' type to store mantissa
+--   * 'm': 'Integral' type to store mantissa
 --   * 's': Type-level number 'Nat' to define scale (fractional part size)
 --
-newtype Decimal (p :: Type) (s :: Nat) = Decimal {
-    mantissa :: p
+newtype Decimal (m :: Type) (s :: Nat) = Decimal {
+    mantissa :: m
 } deriving (Eq, Ord)
 
 

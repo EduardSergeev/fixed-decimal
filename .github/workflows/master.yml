@@ -160,6 +160,7 @@ jobs:
       run: |
         npm i -g badge-maker
         badge version "${{ env.VERSION }}" :green > "${{ env.DOCS_DIR }}/version.svg"
+        badge haddock "${{ env.VERSION }}" "#5E5184" > "${{ env.DOCS_DIR }}/haddock.svg"
         badge bench-linux "${{ env.VERSION }}" "#E95420" > "${{ env.DOCS_DIR }}/bench-linux.svg"
         badge bench-windows "${{ env.VERSION }}" "#01BCF3" > "${{ env.DOCS_DIR }}/bench-windows.svg"
         badge bench-macos "${{ env.VERSION }}" "#A2AAAD" > "${{ env.DOCS_DIR }}/bench-macos.svg"
