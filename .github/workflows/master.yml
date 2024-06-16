@@ -68,7 +68,7 @@ jobs:
         echo "HADDOC_DIR=$(find . -type d -name 'fixed-decimal')" >> $GITHUB_ENV
 
     - name: Upload Haddock documentation
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: haddock
         path: |
@@ -127,7 +127,7 @@ jobs:
         stack bench --ba '-o ${{ env.BENCH_DIR }}/results.html --csv ${{ env.BENCH_DIR }}/results.csv'
 
     - name: Upload ${{ matrix.os }} benchmarks results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.os }}
         path: |
@@ -152,7 +152,7 @@ jobs:
         mkdir ${{ env.DOCS_DIR }}
 
     - name: Download benchmarks results
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: ${{ env.DOCS_DIR }}
 
