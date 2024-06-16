@@ -63,11 +63,13 @@ test-suite fixed-decimal-test
   main-is: Test.hs
   other-modules:
     Paths_fixed_decimal
+    Data.Fixed.Decimal.Tests
   autogen-modules:
     Paths_fixed_decimal
   hs-source-dirs:
     test
-  ghc-options: -fno-warn-orphans -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:
+    -fno-warn-orphans -threaded -rtsopts -with-rtsopts=-N
   build-depends:
     data-dword,
     Decimal,
@@ -93,4 +95,5 @@ benchmark all
     Decimal,
     deepseq,
     fixed-decimal,
+    tasty,
     tasty-bench
