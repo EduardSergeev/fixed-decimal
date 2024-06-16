@@ -17,8 +17,8 @@ import GHC.TypeLits (KnownNat(..), Nat, natVal)
 
 -- | Decimal type of fixed precision and scale which uses:
 --
---   * @Integral p => p@ type to store mantissa
---   * Type-level number @s :: Nat@ to define scale (fractional part length)
+--   * 'p': 'Integral' type to store mantissa
+--   * 's': Type-level number 'Nat' to define scale (fractional part size)
 --
 newtype Decimal (p :: Type) (s :: Nat) = Decimal {
     mantissa :: p
