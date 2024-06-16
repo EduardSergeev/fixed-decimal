@@ -91,9 +91,8 @@ benchmark all
   main-is:
     Bench.hs
   build-depends:
+    criterion,
     data-dword,
     Decimal,
     deepseq,
-    fixed-decimal,
-    tasty,
-    tasty-bench
+    fixed-decimal

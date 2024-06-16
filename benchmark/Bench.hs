@@ -1,19 +1,17 @@
-{-# LANGUAGE BangPatterns               #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE StandaloneDeriving         #-}
-{-# LANGUAGE TypeFamilies               #-}
 
 import           Control.DeepSeq (NFData, force)
+import           Criterion (bench, bgroup, nf)
+import           Criterion.Main (Benchmark, defaultMain)
 import qualified Data.Decimal as DD
 import           Data.DoubleWord (Int128, Int256, Word128, Word256)
 import qualified Data.Fixed.Decimal as FD
 import           Data.List (foldl')
-import           Data.Ratio
+import           Data.Ratio ((%))
 import           Data.Typeable (Typeable, typeOf)
 import           Data.Word (Word64)
-import           Test.Tasty.Bench
-import           Test.Tasty.Patterns.Printer (printAwkExpr)
 import           Text.Printf (printf)
 
 
@@ -35,24 +33,19 @@ benchmark :: Int -> Rational -> Benchmark
 benchmark n r =
     bgroup tn [
         group (toD r :: Double),
-        bgroup "Data.Fixed.Decimal" [
-            bgroup "signed" [
-                group @(FD.Decimal Int 5) (toD r),
-                group @(FD.Decimal Int128 10) (toD r),
-                group (toD r :: FD.Decimal Int256 25),
-                group (toD r :: FD.Decimal Integer 50)
-            ],
-            bgroup "unsigned" [
-                group (toD r :: FD.Decimal Word64 5),
-                group (toD r :: FD.Decimal Word128 5),
-                group (toD r :: FD.Decimal Word256 15)
-            ]
-        ],
+
+        group @(FD.Decimal Int 5) (toD r),
+        group @(FD.Decimal Int128 10) (toD r),
+        group (toD r :: FD.Decimal Int256 25),
+        group (toD r :: FD.Decimal Integer 50),
+        group (toD r :: FD.Decimal Word64 5),
+        group (toD r :: FD.Decimal Word128 5),
+        group (toD r :: FD.Decimal Word256 15),
+        
         group (toD r :: DD.Decimal)
     ]
     where
-        baseline = show . typeOf $ (toD r :: Double)
-        tn = printf "%f x %d times" (fromRational @Double r) n
+        tn = printf "%d" n
 
         toD :: Fractional d => Rational -> d
         toD = fromRational
@@ -81,16 +74,12 @@ benchmark n r =
             ]
             where
                 ds = force $ replicate n d
-                fs = force [ (1 % dn) | dn <- [fromIntegral (-n) `div` 2 .. fromIntegral n `div` 2], dn /= 0 ]
-                d2s = force [(d * fromIntegral n) .. (d * fromIntegral (n * n))]
-                gn = show $ typeOf d
-                bdef o
-                    | gn == baseline =
-                        bench bn
-                    | otherwise = 
-                        bcompare (printAwkExpr (locateBenchmark [bn, baseline, tn])) . (bench bn)
+                fs = force [ 1 % dn | dn <- [fromIntegral (-n) `div` 2 .. fromIntegral n `div` 2], dn /= 0 ]
+                d2s = force [d .. (d * fromIntegral n)]
+                bdef o =
+                    bench bn
                     where
-                        bn = printf "%s (%dx times)" o n :: String
+                        bn = printf "%s" o :: String
 
 
 main :: IO ()

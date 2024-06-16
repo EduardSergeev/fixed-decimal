@@ -124,7 +124,7 @@ jobs:
     - name: Run benchmarks
       run: |
         mkdir ${{ env.BENCH_DIR }}
-        stack bench --ba '--csv ${{ env.BENCH_DIR }}/results.csv --svg ${{ env.BENCH_DIR }}/results.svg +RTS -T'
+        stack bench --ba '-o ${{ env.BENCH_DIR }}/results.html --csv ${{ env.BENCH_DIR }}/results.csv'
 
     - name: Upload ${{ matrix.os }} benchmarks results
       uses: actions/upload-artifact@v3
@@ -162,6 +162,7 @@ jobs:
         badge version "${{ env.VERSION }}" :green > "${{ env.DOCS_DIR }}/version.svg"
         badge bench-linux "${{ env.VERSION }}" "#E95420" > "${{ env.DOCS_DIR }}/bench-linux.svg"
         badge bench-windows "${{ env.VERSION }}" "#01BCF3" > "${{ env.DOCS_DIR }}/bench-windows.svg"
+        badge bench-macos "${{ env.VERSION }}" "#A2AAAD" > "${{ env.DOCS_DIR }}/bench-macos.svg"
         git add ${{ env.DOCS_DIR }}/*
         git -c "user.name=Auto Publisher" -c "user.email=eduard.sergeev@gmail.com" commit --allow-empty -m "Build ${{ env.VERSION }}"
 
