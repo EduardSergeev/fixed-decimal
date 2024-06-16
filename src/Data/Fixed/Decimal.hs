@@ -1,5 +1,8 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE TypeOperators        #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- | Decimal types of fixed precision and scale
 --   which can use any 'Integral' type to store mantissa
@@ -11,17 +14,16 @@ module Data.Fixed.Decimal
 
 import Data.Fixed.Decimal.Class
 import Data.Kind (Type)
-import Data.List (foldl')
 import Data.Ratio (denominator, numerator, (%))
-import GHC.TypeLits (KnownNat(..), Nat, natVal)
+import GHC.TypeLits (KnownNat, Nat, natVal, type (^))
 
 -- | Decimal type of fixed precision and scale which uses:
 --
---   * @Integral p => p@ type to store mantissa
---   * Type-level number @s :: Nat@ to define scale (fractional part length)
+--   * 'm': 'Integral' type to store mantissa
+--   * 's': Type-level number 'Nat' to define scale (fractional part size)
 --
-newtype Decimal (p :: Type) (s :: Nat) = Decimal {
-    mantissa :: p
+newtype Decimal (m :: Type) (s :: Nat) = Decimal {
+    mantissa :: m
 } deriving (Eq, Ord)
 
 
@@ -29,45 +31,48 @@ instance (Integral m, KnownNat s) => FixedDecimal (Decimal m s) where
     type Scale (Decimal m s) = s
     type Precision (Decimal m s) = m
     scale _ =
-        fromInteger $ natVal @s undefined
+        fromIntegral $ natVal @s undefined
     decimal m e =
-        let ma = normalise $ fromIntegral m * (10 ^ (scale @(Decimal m s) undefined + e + 1))
-        in Decimal ma
+        Decimal $ fromIntegral m * (10 ^ (scale @(Decimal m s) undefined + e))
+
+type Scale10 (s :: Nat) = 10 ^ s
+
+scale10 :: forall s i m. (KnownNat (10 ^ s), Integral i) => (Decimal m s) -> i
+scale10 _ =
+    fromInteger $ natVal @(Scale10 s) undefined
+
 
 instance (Show m, Integral m, KnownNat s) => Show (Decimal m s) where
     show (Decimal 0) =
         "0"
-    show dm@(Decimal m) =
-        fst . foldl' step ([], scale dm) . pad (scale dm + 1) . reverse . show $ m
+    show dl@(Decimal dm) =
+        let ds = gof (scale dl) (reverse . sabs . show $ dm) []
+        in if dm < 0 then '-' : ds else ds
         where
-            step ([], i) '0' | i > 0 =
-                ([], i - 1)
-            step (ds, i) d | i > 0 =
-                (d : ds, i - 1)
-            step ([], 0) d =
-                ([d], -1)
-            step (ds, 0) d =
-                (d : '.' : ds, -1)
-            step (ds, i) d  =
-                (d : ds, i - 1)
-            pad 0 ds =
+            sabs ('-': ds) =
                 ds
-            pad i [] =
-                '0' : pad (pred i) []
-            pad i "-" =
-                '0' : pad (pred i) "-"
-            pad i (d : ds) =
-                d : pad (pred i) ds
+            sabs ds =
+                ds
 
-normalise :: Integral a => a -> a
-normalise i =
-    case i `quotRem` 10 of
-        (q, r) | abs r < 5 -> q
-        (q, _) | q > 0 -> succ q
-        (q, _) -> pred q
+            gof 0 ds [] =
+                goi ds []
+            gof 0 ds rs =
+                goi ds ('.' : rs)
+            gof i ('0' : ds) [] =
+                gof (pred i) ds [] 
+            gof i (d : ds) rs =
+                gof (pred i) ds (d : rs)
+            gof i [] rs =
+                gof (pred i) [] ('0' : rs)
 
+            goi [] rs@('.' : _) =
+                '0' : rs
+            goi [] rs =
+                rs
+            goi (d : ds') rs =
+                goi ds' (d : rs)
 
-instance (Integral m, KnownNat s) => Num (Decimal m s) where
+instance (Integral m, KnownNat s, KnownNat (10 ^ s)) => Num (Decimal m s) where
     (Decimal l) + (Decimal r) =
         Decimal $ l + r
 
@@ -75,24 +80,24 @@ instance (Integral m, KnownNat s) => Num (Decimal m s) where
         Decimal $ l - r
 
     (Decimal l) * d@(Decimal r) =
-        Decimal . normalise $ l * r `div` (10 ^ (scale d - 1))
+        Decimal $ l * r `div` scale10 d
 
     abs (Decimal m) =
         Decimal $ abs m
 
     signum d@(Decimal m) =
-        Decimal $ (10 ^ scale d) * signum m
+        Decimal $ scale10 d * signum m
 
     fromInteger i =
-        Decimal $ (10 ^ scale (undefined :: Decimal m s)) * fromInteger i
+        Decimal $ scale10 (undefined :: Decimal m s) * fromInteger i
 
 
-instance (Show m, Integral m, KnownNat s) => Fractional (Decimal m s) where
-  fromRational r =
-    fromInteger (numerator r) / fromInteger (denominator r)
+instance (Show m, Integral m, KnownNat s, KnownNat (10 ^ s)) => Fractional (Decimal m s) where
+    fromRational r =
+        fromInteger (numerator r) / fromInteger (denominator r)
 
-  (Decimal l) / d@(Decimal r) =
-    Decimal . normalise $ (10 ^ (scale d + 1)) * l `div` r
+    (Decimal l) / d@(Decimal r) =
+        Decimal $ scale10 d * l `div` r
     
 instance (Bounded m) => Bounded (Decimal m s) where
     minBound =
@@ -101,6 +106,20 @@ instance (Bounded m) => Bounded (Decimal m s) where
         Decimal $ maxBound @m
 
 
-instance (Integral m, KnownNat s) => Real (Decimal m s) where
+instance (Integral m, KnownNat s, KnownNat (10 ^ s)) => Real (Decimal m s) where
     toRational d@(Decimal m) =
-        fromIntegral m % (10 ^ scale d)
+        (fromIntegral m) % (scale10 d)
+
+instance (Enum m, Integral m, KnownNat s, KnownNat (10 ^ s)) => Enum (Decimal m s) where
+    fromEnum d@(Decimal m) =
+        fromEnum $ m `div` (scale10  d)
+    toEnum =
+        fromIntegral
+    enumFrom =
+        iterate (+1)
+    enumFromThen x1 x2 =
+        let dx = x2 - x1 in iterate (+dx) x1
+    enumFromTo x1 x2 =
+        takeWhile (<= x2) $ enumFrom x1
+    enumFromThenTo x1 x2 x3 =
+        takeWhile (<= x3) $ enumFromThen x1 x2
