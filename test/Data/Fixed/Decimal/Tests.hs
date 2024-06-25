@@ -20,7 +20,7 @@ import           Test.Tasty.HUnit (testCase, (@?=))
 import           Test.Tasty.QuickCheck hiding (scale)
 
 
-testFor :: forall m s. (Integral m, Typeable m, KnownNat s, KnownNat (10 ^ s), Show m) => Decimal m s -> Decimal m s -> TestTree
+testFor :: forall m s. (Integral m, Typeable m, KnownNat s, KnownNat (10 ^ s), Show m, Read m) => Decimal m s -> Decimal m s -> TestTree
 testFor dmin dmax =
     testGroup (show $ typeOf dmin) [
         testGroup "QuickCheck tests" [
@@ -32,7 +32,7 @@ testFor dmin dmax =
                 testProperty "Precision test"
                     prop_precision  
             ],
-        testGroup "Behaviour equivalence tests" [
+            testGroup "Behaviour equivalence tests" [
                 testProperty "/ * test"
                     prop_divisionMultiplication,
                 testProperty "DD.Decimal equivalence in terms of addition"
@@ -42,12 +42,12 @@ testFor dmin dmax =
                     pure $ show (fromDecimal @DD.Decimal d) === show d,
                 testProperty "abs" $ do
                     d <- gen
-                    pure $ show (fromDecimal @DD.Decimal d) === show (abs d),
+                    pure $ show (abs $ fromDecimal @DD.Decimal d) === show (abs d),
                 testProperty "signum" $ do
                     d <- gen
                     pure $ (show . signum @DD.Decimal . fromDecimal) d === (show . signum) d
-        ],
-        testGroup "Enum tests" [
+            ],
+            testGroup "Enum tests" [
                 testProperty "fromEnum"
                     prop_fromEnum,
                 testProperty "toEnum"
@@ -56,31 +56,54 @@ testFor dmin dmax =
                     prop_enumFromTo,
                 testProperty "enumFromThenTo"
                     prop_enumFromThenTo
+            ],
+            testGroup "Read tests" [
+                testProperty "read . show"
+                    prop_showReadRoundtrip,
+                testInput "1." $ \s ->
+                    reads s @?= [(1 :: Decimal m s, "")],
+                testInput "1.1.1" $ \s ->
+                    reads s @?= [(1.1 :: Decimal m s, ".1")],
+                testInput "123$" $ \s ->
+                    reads s @?= [(123 :: Decimal m s, "$")]
+            ]        
+        ],
+        testGroup "Specific Show cases" [
+            testInput "0" $ \s ->
+                show (0 :: Decimal m s) @?= s,
+            testInput "42" $ \s ->
+                show (42 :: Decimal m s) @?= s,
+            testInput "42.1" $ \s ->
+                show (42.1 :: Decimal m s) @?= s,
+            testInput "-42.01" $ \s ->
+                show (-42.01 :: Decimal m s) @?= s,
+            testInput "-42.00042" $ \s ->
+                show (-42.00042 :: Decimal m s) @?= s
         ]
-    ],
-    testGroup "Specific Show cases" [
-        testCase "0" $
-            show (0 :: Decimal m s) @?= "0",
-        testCase "42" $
-            show (42 :: Decimal m s) @?= "42",
-        testCase "42.1" $
-            show (42.1 :: Decimal m s) @?= "42.1",
-        testCase "-42.01" $
-            show (-42.01 :: Decimal m s) @?= "-42.01",
-      testCase "-42.00042" $
-          show (-42.00042 :: Decimal m s) @?= "-42.00042"
     ]
-  ]
     where
         gen :: Gen (Decimal m s)
         gen = do
-            r <- Decimal . (* (10 ^ ((s `div` 2 + 1)))) . fromInteger <$> chooseInteger (minLim, maxLim)
-            pure r
+            gw <- oneof [sw, lw]
+            gf <- oneof [sf, lf]
+            w <- elements [0, gw]
+            f <- elements [0, gf]
+            let d = read @(Decimal m s) $ show w ++ "." ++ show f
+            pure d
             where
-                s = scale dmax
-                p = floor @Double @Int . logBase 10 . fromIntegral . mantissa $ dmax
-                minLim = toInteger $ mantissa dmin `mod` (10 ^ (p `div` 3))        
-                maxLim = toInteger $ mantissa dmax `mod` (10 ^ (p `div` 3))        
+                s = scale (undefined :: Decimal m s)
+                p = ceiling @Double @Int . logBase 10 . fromIntegral . mantissa $ dmax
+                wmax = 10 ^ (p `quot` 2 - s)
+                wmin = negate wmax
+                fmax = 10 ^ (s `quot` 2)
+                fmin = 0
+                sw = (toInteger <$> arbitrary @(Small Integer)) `suchThat` \i -> i > wmin && i < wmax
+                lw = chooseInteger (wmin, wmax)
+                sf = (toInteger <$> arbitrary @(Small Integer)) `suchThat` \i -> i > fmin && i < fmax
+                lf = chooseInteger (fmin, fmax)
+
+        testInput s t =
+            testCase (show s) $ t s
 
         prop_sientificEq = do
             d <- gen
@@ -139,6 +162,10 @@ testFor dmin dmax =
                 fds = [d1, d2 .. d3]
                 (ds, fs) = unzip . filter (\(sd, _) -> last sd /= '0') . fmap (show *** show) . take 10 $ zip dds fds
             pure $ ds === fs
+
+        prop_showReadRoundtrip = do
+            d <- gen
+            pure $ d === (read . show) d
 
         toScientific :: Decimal m s -> Scientific
         toScientific d =
