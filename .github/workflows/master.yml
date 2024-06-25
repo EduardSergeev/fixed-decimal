@@ -60,7 +60,17 @@ jobs:
 
     - run: cabal check
 
-    - run: cabal sdist
+    - name: Run cabal sdist
+      run: |
+        cabal sdist
+        echo "TARBALL_PATH=$(find . -name 'fixed-decimal-*.tar.gz')" >> $GITHUB_ENV
+
+    - name: Upload distribution tarball
+      uses: actions/upload-artifact@v4
+      with:
+        name: tarball
+        path: |
+          ${{ env.TARBALL_PATH }}
 
     - name: Run cabal haddock
       run: |
@@ -174,18 +184,43 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         branch: ${{ env.DOCS_BRANCH }}
 
-  hackage-upload:
-    if: github.event_name == 'push' && startsWith(github.event.base_ref, 'refs/heads/master') && startsWith(github.event.ref, 'refs/tags')
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     needs:
       - stack-build
       - cabal-build
       - metrics
       - benchmarks
     runs-on: ubuntu-latest
+    env:
+      RELEASE_BODY_FILE: ${{ github.workspace }}/release-description.md
+      SDIST_DIR: ${{ github.workspace }}/.sdist
     steps:
     - uses: actions/checkout@v4
+
+    - name: Download distribution tarball
+      uses: actions/download-artifact@v4
+      with:
+        path: ${{ env.SDIST_DIR }}
+
+    - name: Create release notes
+      run: |
+        echo "RELEASE=$(git show -q --format=format:%s)" >> $GITHUB_ENV
+        git show -q --format=format:%b > ${{ env.RELEASE_BODY_FILE }}
+
+    - name: Create release
+      uses: ncipollo/release-action@v1
+      with:
+        commit: ${{ github.sha }}
+        name: ${{ env.RELEASE }}
+        bodyFile: ${{ env.RELEASE_BODY_FILE }}
+        artifacts: ${{ env.SDIST_DIR }}/*
+        makeLatest: ${{ startsWith(github.event.base_ref, 'refs/heads/master') }}
+        prerelease: ${{ !startsWith(github.event.base_ref, 'refs/heads/master') }}
+
     - name: Upload version to Hackage
+      if: startsWith(github.event.base_ref, 'refs/heads/master')
       env:
         HACKAGE_USERNAME: ${{ secrets.HACKAGE_USERNAME }}
         HACKAGE_PASSWORD: ${{ secrets.HACKAGE_PASSWORD }}
-      run: stack upload .
+      run: stack upload --candidate $(find ${{ env.SDIST_DIR }} -name *.tar.gz)
