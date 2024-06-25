@@ -50,7 +50,7 @@ benchmark n r =
         toD :: Fractional d => Rational -> d
         toD = fromRational
 
-        group :: forall d. (NFData d, Fractional d, Real d, Enum d, Typeable d, Show d) => d -> Benchmark
+        group :: forall d. (NFData d, Fractional d, Real d, Enum d, Typeable d, Show d, Read d) => d -> Benchmark
         group d =
             bgroup (show $ typeOf d) [
                 bdef "+" $
@@ -70,12 +70,15 @@ benchmark n r =
                 bdef "toRational" $
                     nf (fmap toRational) d2s,
                 bdef "show" $
-                    nf (fmap show) d2s
+                    nf (fmap show) d2s,
+                bdef "read" $
+                    nf (fmap (read @d)) ss                    
             ]
             where
                 ds = force $ replicate n d
                 fs = force [ 1 % dn | dn <- [fromIntegral (-n) `div` 2 .. fromIntegral n `div` 2], dn /= 0 ]
                 d2s = force [d .. (d * fromIntegral n)]
+                ss = force . fmap show $ d2s
                 bdef o =
                     bench bn
                     where
