@@ -12,8 +12,11 @@ module Data.Fixed.Decimal
     Decimal(..)
 ) where
 
+import Data.Char (isDigit)
 import Data.Fixed.Decimal.Class
 import Data.Kind (Type)
+import Data.List (elemIndex)
+import Data.Maybe (fromMaybe)
 import Data.Ratio (denominator, numerator, (%))
 import GHC.TypeLits (KnownNat, Nat, natVal, type (^))
 
@@ -72,6 +75,25 @@ instance (Show m, Integral m, KnownNat s) => Show (Decimal m s) where
             goi (d : ds') rs =
                 goi ds' (d : rs)
 
+
+instance (Integral m, Read m, KnownNat s) => Read (Decimal m s) where
+    readsPrec p s =
+        let (ds, s') = spanD False s
+            lds = length ds - 1
+            i = ((lds) -) . fromMaybe lds . elemIndex '.' $ s
+            mrss = readsPrec p . filter (/= '.') $ ds
+        in fmap (\(m, rs) -> (Decimal (m * (10 ^ (scale (undefined :: Decimal m s) - i))), rs ++ s')) mrss
+        where
+            spanD _ cs@[] =
+                (cs, cs)
+            spanD d cs@(c : cs')
+                | isDigit c || c == '-' || c == '.' && not d =
+                    let (bs, as) = spanD (d || c == '.') cs'
+                    in (c : bs, as)
+                | otherwise =
+                    ([], cs)                
+
+
 instance (Integral m, KnownNat s, KnownNat (10 ^ s)) => Num (Decimal m s) where
     (Decimal l) + (Decimal r) =
         Decimal $ l + r
@@ -80,7 +102,7 @@ instance (Integral m, KnownNat s, KnownNat (10 ^ s)) => Num (Decimal m s) where
         Decimal $ l - r
 
     (Decimal l) * d@(Decimal r) =
-        Decimal $ l * r `div` scale10 d
+        Decimal $ l * r `quot` scale10 d
 
     abs (Decimal m) =
         Decimal $ abs m
@@ -92,12 +114,12 @@ instance (Integral m, KnownNat s, KnownNat (10 ^ s)) => Num (Decimal m s) where
         Decimal $ scale10 (undefined :: Decimal m s) * fromInteger i
 
 
-instance (Show m, Integral m, KnownNat s, KnownNat (10 ^ s)) => Fractional (Decimal m s) where
+instance (Integral m, KnownNat s, KnownNat (10 ^ s)) => Fractional (Decimal m s) where
     fromRational r =
         fromInteger (numerator r) / fromInteger (denominator r)
 
     (Decimal l) / d@(Decimal r) =
-        Decimal $ scale10 d * l `div` r
+        Decimal $ scale10 d * l `quot` r
     
 instance (Bounded m) => Bounded (Decimal m s) where
     minBound =
@@ -112,7 +134,7 @@ instance (Integral m, KnownNat s, KnownNat (10 ^ s)) => Real (Decimal m s) where
 
 instance (Enum m, Integral m, KnownNat s, KnownNat (10 ^ s)) => Enum (Decimal m s) where
     fromEnum d@(Decimal m) =
-        fromEnum $ m `div` (scale10  d)
+        fromEnum $ m `quot` (scale10  d)
     toEnum =
         fromIntegral
     enumFrom =

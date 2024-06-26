@@ -4,7 +4,21 @@
 [![Test Coverage](https://coveralls.io/repos/github/EduardSergeev/fixed-decimal/badge.svg)](https://coveralls.io/github/EduardSergeev/fixed-decimal)
 [![Documentation](https://eduardsergeev.github.io/fixed-decimal/haddock.svg)](https://eduardsergeev.github.io/fixed-decimal/haddock/)
 
-[Fixed-precision decimals](https://en.wikipedia.org/wiki/Fixed-point_arithmetic) for Haskell
+Fixed-precision decimals for Haskell
+
+# The purpose of this package
+
+To provide simple high-performance [fixed-precision decimals](https://en.wikipedia.org/wiki/Fixed-point_arithmetic) data types for Haskell.  
+
+High-performance in this implementation is achieved due to core "unchecked" implementation approach:
+
+1. The implementation is "precision-fixed" on type-level and is never recalculated so internally only fast integral arithmetic is used;
+1. Core implementation does not check for arithmetic overflows or precision overflows;
+1. Core implementation does not do any rounding of the result of any operation.
+
+As a result the [performance of this implementation](https://eduardsergeev.github.io/fixed-decimal/ubuntu-latest/results.html), especially for smaller `Integral` mantissas is in-par (or faster) than standard `Double` and much faster than arbitrary precision decimal implementations.
+
+__NB:__ Subsequent versions might add optional rounding and overflow detection but the core "unchecked" functionality will still be available for user code which does not need such checks but needs better performance.
 
 # How to use it
 
@@ -48,7 +62,7 @@ To use mantissa of arbitrary length use `Integer`:
 0.33333333333333333333333333333333333333333333333333
 ```
 
-# Why
+# Fixed-precision vs floating point numeric types
 
 In comparison to floating-point numeric data types like `Float` or `Double` fixed-precision decimals can store decimal numbers with exact precision.  
 
