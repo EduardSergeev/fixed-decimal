@@ -13,6 +13,7 @@ on:
 env:
   DOCS_BRANCH: docs
   DOCS_DIR: ${{ github.workspace }}/docs
+  TARBALL_ARTIFACT_NAME: tarbal
 
 jobs:
   stack-build:
@@ -68,7 +69,7 @@ jobs:
     - name: Upload distribution tarball
       uses: actions/upload-artifact@v4
       with:
-        name: tarball
+        name: ${{ env.TARBALL_ARTIFACT_NAME }}
         path: |
           ${{ env.TARBALL_PATH }}
 
@@ -201,6 +202,7 @@ jobs:
     - name: Download distribution tarball
       uses: actions/download-artifact@v4
       with:
+        name: ${{ env.TARBALL_ARTIFACT_NAME }}
         path: ${{ env.SDIST_DIR }}
 
     - name: Create release notes
